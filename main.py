@@ -18,7 +18,7 @@ def write_time_series(namespace: str,  time_series: pd.DataFrame):
     registration_key = namespace + "." + values_column_name
     if registration_key in get_registry():
         file_path = get_registry()[registration_key]["file_path"]
-        dir_part = os.makedirs(path, exist_ok=True)
+        dir_part = os.path.dirname(file_path)
         os.makedirs(dir_part, exist_ok=True)
         time_series.to_parquet(get_registry()[registration_key]["file_path"])
     else:
