@@ -46,7 +46,8 @@ def register_str_time_series(namespace: str, time_series: pd.DataFrame, user_reg
     str_schema.validate(time_series)
     default_registration_data = {"type": "str",
                                   "namespace": namespace,
-                                  "values_column_name": values_column_name}
+                                  "values_column_name": values_column_name,
+                              "file_path": "data/" + namespace + "/" + values_column_name + ".parquet"}
     default_registration_data.update(user_registration_data)
     registry[registration_key] = default_registration_data
     print("Registering time series with key: " + registration_key)
