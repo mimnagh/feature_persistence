@@ -19,9 +19,13 @@ registry = dict()
 def get_registry():
     return registry
 
+def reset_registry():
+    registry.clear()
+
+
 # Register a target time series represented as a data frame with the first column containing date.times
 # and the second column containing values. Concatenates a supplied namespace and the values column name.
-def register_float_time_series(namespace: str, time_series: pd.DataFrame, registration_data: dict):
+def register_float_time_series(namespace: str, time_series: pd.DataFrame, user_registration_data: dict):
     time_series = time_series.copy()
     values_column_name = time_series.columns[1]
     registration_key = namespace + "." + values_column_name
@@ -29,11 +33,13 @@ def register_float_time_series(namespace: str, time_series: pd.DataFrame, regist
         raise Exception("Time series already registered with key: " + registration_key)
     time_series.columns = ["date", "values_float"]
     float_schema.validate(time_series)
-    registration_data.update({"type": "float",
+    default_registration_data = {"type": "float",
                                   "namespace": namespace,
                                   "values_column_name": values_column_name,
-                              "file_path": "data/" + namespace + "/" + values_column_name + ".parquet"})
-    registry[registration_key] = registration_data
+                              "file_path": "data/" + namespace + "/" + values_column_name + ".parquet"}
+
+    default_registration_data.update(user_registration_data)
+    registry[registration_key] = default_registration_data
     print("Registering time series with key: " + registration_key)
 
 def register_str_time_series(namespace: str, time_series: pd.DataFrame, user_registration_data: dict):
@@ -60,6 +66,7 @@ def register_time_series(namespace: str, time_series: pd.DataFrame, user_registr
 
 def register_data_frame(namespace: str, data_frame: pd.DataFrame, user_registration_data: dict):
     for column_name in data_frame.columns[1:]:
+        print("Registering time series with column name: " + column_name)
         register_time_series(namespace, data_frame[[data_frame.columns[0], column_name]], user_registration_data)
 
 def unregister_namespace(namespace: str):

@@ -1,16 +1,18 @@
 import datetime
+import os
 from abc import ABC, abstractmethod
 import pandas as pd
 
 import registry
-from settings import get_settings
+from settings import get_settings, AppSettings
 
 
 class PersistenceManager:
-    def __init__(self):
-        self.persister = TimeSeriesDataPersisterFactory.create_persister(get_settings())
+    def __init__(self, settings: AppSettings = get_settings()):
+        self.persister = TimeSeriesDataPersisterFactory.create_persister(settings)
 
     def write_time_series(self, key: str, as_of: datetime.datetime, time_series: pd.DataFrame):
+        print("Writing time series with key: " + key)
         if key in registry.get_registry():
             self.persister.persist_data(key, as_of, time_series)
         else:
@@ -59,22 +61,25 @@ class TimeSeriesDataPersister(ABC):
 
 class TimeSeriesDataPersisterFactory:
     @staticmethod
-    def create_persister(persister_type, **kwargs):
+    def create_persister(settings):
+        persister_type = settings.persistence_type
         if persister_type == 'local_file':
-            return LocalFilePersister(**kwargs)
+            return LocalFilePersister(settings)
         elif persister_type == 's3':
-            return S3Persister(**kwargs)
+            return S3Persister(settings)
         elif persister_type == 'sql_db':
-            return SQLDBPersister(**kwargs)
+            return SQLDBPersister(settings)
         else:
             raise ValueError(f"Unknown persister type: {persister_type}")
 
 class LocalFilePersister(TimeSeriesDataPersister):
-    def __init__(self, storage_path):
-        self.storage_path = storage_path
+    def __init__(self, settings):
+        self.storage_path = settings.storage_path
 
     def persist_data(self, key, as_of, data_frame):
         file_path = self._get_file_path(key, as_of)
+        print("Writing time series to file: " + file_path)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
         data_frame.to_parquet(file_path, index=False)
 
     def read_data(self, key, as_of):
@@ -96,9 +101,9 @@ class LocalFilePersister(TimeSeriesDataPersister):
 
 
 class S3Persister(TimeSeriesDataPersister):
-    def __init__(self, bucket_name, storage_path):
-        self.bucket_name = bucket_name
-        self.storage_path = storage_path
+    def __init__(self, settings):
+        self.bucket_name = settings.bucket_name
+        self.storage_path = settings.storage_path
 
     def persist_data(self, key, as_of, data_frame):
         file_path = self._get_file_path(key, as_of)
@@ -124,9 +129,9 @@ class S3Persister(TimeSeriesDataPersister):
 
 
 class SQLDBPersister(TimeSeriesDataPersister):
-    def __init__(self, sql_connection, table_name):
-        self.sql_connection = sql_connection
-        self.table_name = table_name
+    def __init__(self, settings):
+        self.sql_connection = settings.sql_connection
+        self.table_name = settings.table_name
 
     def persist_data(self, key, as_of, data_frame):
         data_frame['key'] = key
